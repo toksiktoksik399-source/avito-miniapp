@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Авто-лента</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --bg:var(--tg-theme-bg-color,#fff);
+  --bg2:var(--tg-theme-secondary-bg-color,#f1f2f4);
+  --fg:var(--tg-theme-text-color,#15171a);
+  --hint:var(--tg-theme-hint-color,#7b8189);
+  --link:var(--tg-theme-link-color,#1a73e8);
+  --btn:var(--tg-theme-button-color,#1a73e8);
+  --btnfg:var(--tg-theme-button-text-color,#fff);
+  --line:color-mix(in srgb,var(--fg) 12%,transparent);
+  --avito:#0a84ff; --drom:#1fa65a; --autoru:#e5392f;
+  --hot:#d9480f;
+  --safe:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg2);color:var(--fg);font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--btn);outline-offset:2px}
+#app{min-height:100vh;padding-bottom:calc(64px + var(--safe))}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.row{display:flex;gap:8px;overflow-x:auto;padding:8px 12px;scrollbar-width:none}
+.row::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:6px 12px;border-radius:99px;background:var(--bg2);white-space:nowrap;font-size:14px}
+.chip.on{background:var(--btn);color:var(--btnfg)}
+.search{display:flex;gap:8px;padding:8px 12px 0}
+.search input{flex:1;min-width:0;border:0;background:var(--bg2);border-radius:10px;padding:9px 12px}
+.search select{border:0;background:var(--bg2);border-radius:10px;padding:0 8px}
+.meta{padding:10px 14px 4px;color:var(--hint);font-size:13px}
+.car{display:grid;grid-template-columns:116px 1fr;gap:12px;padding:12px 14px 12px 11px;background:var(--bg);border-bottom:1px solid var(--line);border-left:3px solid var(--c);color:inherit;text-decoration:none;position:relative}
+.car[data-p=avito]{--c:var(--avito)} .car[data-p=drom]{--c:var(--drom)} .car[data-p=autoru]{--c:var(--autoru)}
+.ph{width:116px;height:88px;border-radius:8px;background:var(--bg2) center/cover no-repeat}
+.price{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.ttl{margin-top:1px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.sub{margin-top:4px;color:var(--hint);font-size:13px}
+.sub b{font-weight:600;color:var(--c)}
+.tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:6px;background:color-mix(in srgb,var(--hot) 14%,transparent);color:var(--hot);font-size:12px;font-weight:600;vertical-align:2px}
+.new{position:absolute;left:5px;top:16px;width:8px;height:8px;border-radius:50%;background:var(--hot)}
+.fav{position:absolute;right:8px;top:6px;font-size:20px;padding:6px;color:var(--hint)}
+.fav.on{color:#e0a100}
+.empty{padding:48px 28px;text-align:center;color:var(--hint)}
+.empty b{display:block;color:var(--fg);font-size:17px;margin-bottom:6px}
+.btn{display:block;width:100%;padding:13px;border-radius:12px;background:var(--btn);color:var(--btnfg);font-weight:600;text-align:center}
+.btn.ghost{background:var(--bg2);color:var(--fg)}
+.btn.sm{display:inline-block;width:auto;padding:8px 14px;font-size:14px}
+.pad{padding:12px 14px}
+.w{background:var(--bg);margin:8px 0;padding:12px 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.w h3{margin:0;font-size:16px}
+.w .st{margin:6px 0 10px;color:var(--hint);font-size:13px}
+.w .st i{font-style:normal}.w .st .err{color:var(--autoru)}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--bg);border-top:1px solid var(--line);padding-bottom:var(--safe);z-index:6}
+nav button{flex:1;padding:11px 0 9px;color:var(--hint);font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--btn);font-weight:600}
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:none}
+.sheet.open{display:block}
+.sheet>div{position:absolute;left:0;right:0;bottom:0;max-height:92vh;overflow:auto;background:var(--bg);border-radius:16px 16px 0 0;padding:14px 14px calc(18px + var(--safe))}
+.sheet h2{margin:0 0 10px;font-size:18px}
+.f{margin:14px 0 4px;font-weight:600;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips .chip{font-size:13px;padding:6px 11px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.two input,.f input[type=text],.sheet input[type=search]{width:100%;border:0;background:var(--bg2);border-radius:10px;padding:10px 12px}
+.sw{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
+.sw input{width:20px;height:20px}
+.more{padding:14px;text-align:center;color:var(--link)}
+@media (prefers-reduced-motion:no-preference){.sheet>div{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav>
+  <button data-tab="feed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Лента</button>
+  <button data-tab="watches"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Поиски</button>
+  <button data-tab="favs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Избранное</button>
+</nav>
+<div class="sheet" id="sheet"><div id="sheetBody"></div></div>
+<script>
+const tg=window.Telegram&&Telegram.WebApp; if(tg){tg.ready();tg.expand();}
+const $=s=>document.querySelector(s), app=$('#app');
+const PN={avito:'Авито',drom:'Дром',autoru:'Авто.ру'};
+let CAT=null, ST=EMPTY0();
+function EMPTY0(){return {watches:[],scans:[],items:[],max_watches:6,updated:0}}
+let tab='feed';
+const F={watch:'',platform:'',sort:'new',q:'',below:false}; let shown=30;
+
+const P=new URLSearchParams(location.search);
+const KEY=P.get('k'), REPO=P.get('r'), BR=P.get('b')||'main';
+const BASE=P.get('base')||`https://raw.githubusercontent.com/${REPO}/${BR}/data/`;
+let FAVS=new Set(); try{FAVS=new Set(JSON.parse(localStorage.getItem('favs')||'[]'))}catch(e){}
+const saveFavs=()=>{try{localStorage.setItem('favs',JSON.stringify([...FAVS]))}catch(e){}};
+const EMPTY={watches:[],scans:[],items:[],max_watches:6,updated:0};
+async function load(){
+  const r=await fetch(BASE+KEY+'.json?t='+Math.floor(Date.now()/60000));
+  if(r.status===404) ST=EMPTY; else if(!r.ok) throw new Error('данные не загрузились ('+r.status+')'); else ST=await r.json();
+}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rub=n=>Number(n).toLocaleString('ru-RU').replace(/ /g,' ')+' ₽';
+const brand=id=>CAT.brands.find(b=>b.id===id), model=(b,m)=>brand(b)?.models.find(x=>x.id===m);
+const wName=w=>{const b=brand(w.brand),m=model(w.brand,w.model);return (b?.name||w.brand)+' '+(m?.name||w.model)};
+function ago(t){const s=Date.now()/1000-t; if(s<90)return 'только что'; if(s<3600)return Math.round(s/60)+' мин назад'; if(s<86400)return Math.round(s/3600)+' ч назад';
+  return new Date(t*1000).toLocaleDateString('ru-RU',{day:'numeric',month:'short'});}
+
+function card(c){
+  const t=c.published||c.first_seen, fresh=Date.now()/1000-c.first_seen<3600*3;
+  const bits=[c.year||'', c.km?c.km.toLocaleString('ru-RU')+' км':'', c.city].filter(Boolean).join(', ');
+  return `<a class="car" data-p="${c.platform}" href="${esc(c.url)}" data-url="${esc(c.url)}">
+    ${fresh?'<i class="new" title="Новое"></i>':''}
+    <div class="ph" style="background-image:url('${esc(c.image)}')"></div>
+    <div><div class="price">${rub(c.price)}${c.below>=12?`<span class="tag">−${c.below}%</span>`:''}</div>
+    <div class="ttl">${esc(c.title)}</div>
+    <div class="sub">${esc(bits)}</div>
+    <div class="sub"><b>${PN[c.platform]}</b> · ${ago(t)}</div></div>
+    <button class="fav ${FAVS.has(c.ext_id)?'on':''}" data-fav="${esc(c.ext_id)}" aria-label="В избранное">${FAVS.has(c.ext_id)?'★':'☆'}</button></a>`;
+}
+
+function filtered(){
+  const t=c=>c.published||c.first_seen;
+  const S={new:(a,b)=>t(b)-t(a),cheap:(a,b)=>a.price-b.price,exp:(a,b)=>b.price-a.price,year:(a,b)=>(b.year||0)-(a.year||0),km:(a,b)=>(a.km||1e9)-(b.km||1e9)};
+  const q=F.q.toLowerCase();
+  return (ST.items||[]).filter(c=>{
+    if(tab==='favs'&&!FAVS.has(c.ext_id))return false;
+    if(F.watch&&!(c.w||[]).includes(+F.watch))return false;
+    if(F.platform&&c.platform!==F.platform)return false;
+    if(q&&!c.title.toLowerCase().includes(q))return false;
+    if(F.below&&!(c.below>=12))return false;
+    return true;}).sort(S[F.sort]||S.new);
+}
+function loadFeed(reset){ if(reset)shown=30; else shown+=30; renderList(); }
+function renderList(){
+  const el=$('#list'); if(!el)return;
+  const all=filtered(), items=all.slice(0,shown), total=all.length;
+  if(!items.length){
+    el.innerHTML = tab==='favs'
+      ? `<div class="empty"><b>В избранном пусто</b>Нажмите ☆ на объявлении в ленте.</div>`
+      : ST.watches.length
+        ? `<div class="empty"><b>Пока нет объявлений</b>Первый круг поиска занимает несколько минут. Статус смотрите на вкладке «Поиски».</div>`
+        : `<div class="empty"><b>Нет ни одного поиска</b>Выберите марку и модель — объявления со всех площадок появятся здесь.<br><br><button class="btn sm" data-go="newwatch">Создать поиск</button></div>`;
+    $('#meta').textContent=''; return;
+  }
+  $('#meta').textContent=`Найдено ${total}`+(ST.updated?` · обновлено ${ago(ST.updated)}`:'');
+  el.innerHTML=items.map(card).join('')+(items.length<total?'<button class="more" data-more>Показать ещё</button>':'');
+}
+function renderFeed(){
+  const w=ST.watches;
+  app.innerHTML=`<div class="top">
+    ${tab==='feed'?`<div class="row" id="wchips"><button class="chip ${F.watch?'':'on'}" data-w="">Все поиски</button>${w.map(x=>`<button class="chip ${F.watch==x.id?'on':''}" data-w="${x.id}">${esc(wName(x))}</button>`).join('')}</div>`:''}
+    <div class="search"><input id="q" type="search" placeholder="Поиск по названию" value="${esc(F.q)}">
+      <select id="sort"><option value="new">Сначала новые</option><option value="cheap">Дешевле</option><option value="exp">Дороже</option><option value="year">Новее год</option><option value="km">Меньше пробег</option></select></div>
+    <div class="row"><button class="chip ${F.platform?'':'on'}" data-pl="">Все площадки</button>${Object.entries(PN).map(([k,v])=>`<button class="chip ${F.platform===k?'on':''}" data-pl="${k}">${v}</button>`).join('')}<button class="chip ${F.below?'on':''}" data-below>Ниже рынка</button></div></div>
+    <div class="meta" id="meta"></div><div id="list"></div>`;
+  $('#sort').value=F.sort;
+}
+function renderWatches(){
+  const sc={}; (ST.scans||[]).forEach(s=>(sc[s.watch_id]=sc[s.watch_id]||[]).push(s));
+  app.innerHTML=`<div class="pad"><button class="btn" data-go="newwatch">Новый поиск</button>
+    <div class="sub" style="margin-top:8px">Пауза, уведомления и удаление — кнопка «🔎 Мои поиски» в чате с ботом.</div></div>`+
+  (ST.watches.length?ST.watches.map(w=>{
+    const lines=(sc[w.id]||[]).map(s=>{const rn=(CAT.regions.find(r=>r.id===s.region)||{}).name;return `<i class="${s.last_error?'err':''}">${PN[s.platform]}${rn?' · '+rn:''}: ${s.last_error?esc(s.last_error):(s.last_ok?'ок, '+ago(s.last_ok)+', подошло '+s.n:'ждём')}</i>`}).join('<br>')||'<i>Ещё не проверялся</i>';
+    const gens=w.gens.map(g=>model(w.brand,w.model)?.gens.find(x=>x.id===g)?.name).filter(Boolean).join(', ');
+    const rg=w.regions.map(r=>CAT.regions.find(x=>x.id===r)?.name||r).join(', ');
+    const det=[gens,(w.y1||w.y2)?`${w.y1||''}–${w.y2||''}`:'',w.pmax?`до ${rub(w.pmax)}`:'',rg,w.platforms.map(p=>PN[p]).join(', ')].filter(Boolean).join(' · ');
+    return `<div class="w"><h3>${esc(wName(w))}${w.active?'':' (пауза)'}${w.notify?'':' · без уведомлений'}</h3><div class="st">${esc(det)}<br>${lines}</div>
+      <div class="acts"><button class="chip" data-open="${w.id}">Смотреть ленту</button></div></div>`}).join(''):
+  `<div class="empty"><b>Поисков пока нет</b>Поиск = марка + модель + регионы. Можно создать несколько.</div>`);
+}
+function render(){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  if(tab==='watches')renderWatches(); else {renderFeed(); loadFeed(true);}
+}
+function toast(m){ if(tg&&tg.showAlert)tg.showAlert(m); else alert(m); }
+
+/* ---------- мастер нового поиска ---------- */
+const N={brand:'',models:new Set(),gens:new Set(),regions:new Set(['rossiya']),platforms:new Set(['avito','drom','autoru']),y1:'',y2:'',pmax:'',notify:true,bq:'',rq:''};
+function openSheet(){ $('#sheet').classList.add('open'); drawSheet(); }
+function closeSheet(){ $('#sheet').classList.remove('open'); }
+function drawSheet(){
+  const b=brand(N.brand);
+  const brands=CAT.brands.filter(x=>!N.bq||x.name.toLowerCase().includes(N.bq.toLowerCase()));
+  const gens=[]; if(b) b.models.filter(m=>N.models.has(m.id)).forEach(m=>m.gens.forEach(g=>gens.push([m,g])));
+  const regs=CAT.regions.filter(r=>!N.rq||r.name.toLowerCase().includes(N.rq.toLowerCase()));
+  $('#sheetBody').innerHTML=`<h2>Новый поиск</h2>
+  <div class="f">Марка</div>
+  <input type="search" id="bq" placeholder="Найти марку" value="${esc(N.bq)}">
+  <div class="chips" style="margin-top:8px">${brands.map(x=>`<button class="chip ${N.brand===x.id?'on':''}" data-b="${x.id}">${esc(x.name)}</button>`).join('')}</div>
+  ${b?`<div class="f">Модели (можно несколько)</div><div class="chips">${b.models.map(m=>`<button class="chip ${N.models.has(m.id)?'on':''}" data-m="${m.id}">${esc(m.name)}</button>`).join('')}</div>`:''}
+  ${gens.length?`<div class="f">Поколения (пусто — любые)</div><div class="chips">${gens.map(([m,g])=>`<button class="chip ${N.gens.has(g.id)?'on':''}" data-g="${g.id}">${N.models.size>1?esc(m.name)+' ':''}${esc(g.name)} · ${g.y1}–${g.y2}</button>`).join('')}</div>`:''}
+  <div class="f">Год выпуска</div><div class="two"><input type="text" inputmode="numeric" id="y1" placeholder="от" value="${N.y1}"><input type="text" inputmode="numeric" id="y2" placeholder="до" value="${N.y2}"></div>
+  <div class="f">Максимальная цена, ₽</div><input type="text" inputmode="numeric" id="pmax" placeholder="например 2500000" value="${N.pmax}" style="width:100%;border:0;background:var(--bg2);border-radius:10px;padding:10px 12px">
+  <div class="f">Регионы (можно несколько)</div>
+  <input type="search" id="rq" placeholder="Найти город" value="${esc(N.rq)}">
+  <div class="chips" style="margin-top:8px">${regs.map(r=>`<button class="chip ${N.regions.has(r.id)?'on':''}" data-r="${r.id}">${esc(r.name)}</button>`).join('')}</div>
+  <div class="f">Площадки</div><div class="chips">${CAT.platforms.map(p=>`<button class="chip ${N.platforms.has(p.id)?'on':''}" data-pf="${p.id}">${p.name}</button>`).join('')}</div>
+  <label class="sw"><span>Присылать уведомления о новых</span><input type="checkbox" id="nt" ${N.notify?'checked':''}></label>
+  <button class="btn" id="create">Создать поиск</button><div style="height:8px"></div><button class="btn ghost" id="cancel">Отмена</button>`;
+}
+function tog(set,v){set.has(v)?set.delete(v):set.add(v);}
+function keepScroll(fn){const s=$('#sheet>div').scrollTop;fn();$('#sheet>div').scrollTop=s;}
+function syncInputs(){['y1','y2','pmax'].forEach(k=>{const e=$('#'+k);if(e)N[k]=e.value.replace(/\D/g,'');});const n=$('#nt');if(n)N.notify=n.checked;}
+
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-tab],[data-fav],[data-w],[data-pl],[data-below],[data-more],[data-go],[data-notify],[data-active],[data-open],[data-del],[data-b],[data-m],[data-g],[data-r],[data-pf],#create,#cancel,a.car');
+  if(!t)return; const d=t.dataset;
+  if(d.tab){tab=d.tab; render(); return;}
+  if(d.fav!==undefined){e.preventDefault(); const on=!FAVS.has(d.fav); on?FAVS.add(d.fav):FAVS.delete(d.fav); saveFavs();
+    if(tab==='favs')renderList(); else {t.classList.toggle('on',on); t.textContent=on?'★':'☆';} return;}
+  if(t.matches('a.car')){e.preventDefault(); const u=d.url; if(tg&&tg.openLink)tg.openLink(u); else window.open(u,'_blank'); return;}
+  if(d.w!==undefined){F.watch=d.w; render(); return;}
+  if(d.pl!==undefined){F.platform=d.pl; render(); return;}
+  if(d.below!==undefined){F.below=!F.below; render(); return;}
+  if(d.more!==undefined){loadFeed(false); return;}
+  if(d.go==='newwatch'){Object.assign(N,{brand:'',models:new Set(),gens:new Set(),bq:'',rq:''}); openSheet(); return;}
+  if(d.open){F.watch=d.open; tab='feed'; render(); return;}
+  if(d.b){syncInputs(); N.brand=d.b; N.models=new Set(); N.gens=new Set(); keepScroll(drawSheet); return;}
+  if(d.m){syncInputs(); tog(N.models,d.m); N.gens=new Set(); keepScroll(drawSheet); return;}
+  if(d.g){syncInputs(); tog(N.gens,d.g); keepScroll(drawSheet); return;}
+  if(d.r){syncInputs(); tog(N.regions,d.r); keepScroll(drawSheet); return;}
+  if(d.pf){syncInputs(); tog(N.platforms,d.pf); keepScroll(drawSheet); return;}
+  if(t.id==='cancel'){closeSheet(); return;}
+  if(t.id==='create'){
+    syncInputs();
+    if(!N.brand||!N.models.size) return toast('Выберите марку и хотя бы одну модель');
+    if(!N.regions.size||!N.platforms.size) return toast('Выберите регион и площадку');
+    const payload={act:'add',brand:N.brand,models:[...N.models],gens:[...N.gens],y1:+N.y1||null,y2:+N.y2||null,pmax:+N.pmax||null,
+        regions:[...N.regions],platforms:[...N.platforms],notify:N.notify};
+    if(tg&&tg.sendData&&!(tg.initDataUnsafe&&tg.initDataUnsafe.query_id)){ tg.sendData(JSON.stringify(payload)); }
+    else toast('Создавать поиск можно только через кнопку «🚗 Авто-лента» внизу чата с ботом. Закройте приложение и откройте его этой кнопкой.');
+  }
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='q'){F.q=e.target.value; clearTimeout(window._qt); window._qt=setTimeout(()=>loadFeed(true),350);}
+  if(e.target.id==='bq'||e.target.id==='rq'){syncInputs(); N[e.target.id]=e.target.value; const id=e.target.id,pos=e.target.selectionStart; keepScroll(drawSheet); const n=$('#'+id); n.focus(); n.setSelectionRange(pos,pos);}
+});
+document.addEventListener('change',e=>{ if(e.target.id==='sort'){F.sort=e.target.value; loadFeed(true);} });
+$('#sheet').addEventListener('click',e=>{ if(e.target.id==='sheet')closeSheet(); });
+
+(async()=>{
+  if(!KEY||!REPO&&!P.get('base')){ app.innerHTML=`<div class="empty"><b>Нет доступа</b>Откройте приложение кнопкой «🚗 Авто-лента» в чате с ботом.</div>`; return; }
+  try{
+    CAT=await (await fetch('catalog.json')).json(); await load(); render();
+    setInterval(async()=>{ if($('#sheet').classList.contains('open'))return; try{ const n=(ST.items||[]).length; await load(); if(tab==='watches')renderWatches(); else if(!document.activeElement||document.activeElement.id!=='q'){ renderList(); } }catch(e){} },60000);
+  }catch(e){ app.innerHTML=`<div class="empty"><b>Не удалось загрузить данные</b>${esc(e.message)}<br><br><button class="btn sm" onclick="location.reload()">Повторить</button></div>`; }
+})();
+</script>
+</body>
+</html>
