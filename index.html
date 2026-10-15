@@ -104,6 +104,15 @@ nav button.on{color:var(--btn);font-weight:600}
 .dbar .btn{flex:1}.dbar .star{flex:none;width:50px;border-radius:12px;background:var(--bg2);font-size:22px}
 .dbar .star.on{color:#e0a100}
 .car .price,.car .ttl{padding-right:30px}
+.mk{margin:14px 0;padding:12px 14px;border-radius:12px;background:var(--bg2)}
+.mkh{font-size:15px}.mkh b{font-weight:700}
+.ruler{position:relative;display:flex;height:10px;margin:14px 0 8px;border-radius:99px;overflow:hidden}
+.ruler i{display:block;height:100%}
+.ruler .z1{width:27.27%;background:#9ad9b4}.ruler .z2{width:45.46%;background:#1fb866}.ruler .z3{width:27.27%;background:#f0a4a4}
+.pin{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid #15171a;transform:translate(-50%,-50%);box-sizing:border-box;margin-top:0}
+.rwrap{position:relative}
+.mkr{display:flex;justify-content:space-between;font-size:13px;color:var(--hint)}
+.mkl{display:flex;justify-content:space-between;font-size:11px;color:var(--hint);margin-top:-2px}
 .src{font-size:12px;color:var(--hint);margin-top:2px}
 .sec{margin:14px 0 6px;font-weight:600}
 </style>
@@ -222,6 +231,20 @@ function renderList(){
 function renderFavs(){ app.innerHTML=`<div class="meta" id="meta"></div><div id="list"></div>`; renderList(); }
 
 /* ---------- подробная карточка ---------- */
+function marketHtml(c){
+  if(!c.pm&&!(c.ml&&c.mh))return `<div class="note">Оценка цены площадки появится после загрузки страницы объявления ботом.</div>`;
+  const who=c.ps==='platform'?'Оценка '+PN[c.p]:'Оценка по нашим данным';
+  let ruler='';
+  if(c.ml&&c.mh){
+    const span=c.mh-c.ml, from=c.ml-0.6*span, tot=span*2.2, pos=Math.max(3,Math.min(97,(c.pr-from)/tot*100));
+    const mid=(c.ml+c.mh)/2, pct=Math.round((c.pr-mid)/mid*100);
+    ruler=`<div class="rwrap"><div class="ruler"><i class="z1"></i><i class="z2"></i><i class="z3"></i></div><b class="pin" style="left:${pos}%"></b></div>
+      <div class="mkl"><span>Ниже рынка</span><span>Рыночная цена</span><span>Выше рынка</span></div>
+      <div class="mkr"><span>от ${rub(c.ml)}</span><span>до ${rub(c.mh)}</span></div>
+      <div class="src" style="margin-top:8px">Похожие машины обычно продаются за столько. Эта цена ${pct===0?'ровно в середине рынка':Math.abs(pct)+'% '+(pct<0?'ниже':'выше')+' середины рынка'}.</div>`;
+  }
+  return `<div class="mk"><div class="mkh">${who}: <b>${esc(c.pm||(c.pr<c.ml?'Ниже рынка':c.pr>c.mh?'Выше рынка':'В рынке'))}</b></div>${ruler}</div>`;
+}
 function openDetail(id){
   const c=findItem(id); if(!c)return; cur=c;
   const d=c.d||{}, imgs=(d.imgs&&d.imgs.length?d.imgs:(c.i?[c.i]:[]));
@@ -230,7 +253,8 @@ function openDetail(id){
   const src=c.pm?(c.ps==='platform'?`Оценка ${PN[c.p]}`:'Оценка по нашим данным'):'';
   $('#detail').innerHTML=`<button class="dclose" data-dclose aria-label="Назад">←</button>
     <div class="galwrap"><div class="gal" id="gal">${imgs.length?imgs.map(u=>`<img src="${esc(u)}" loading="lazy" alt="">`).join(''):'<div class="noimg">нет фото</div>'}</div>${imgs.length>1?`<span class="cnt" id="cnt">1/${imgs.length}</span>`:''}</div>
-    <div class="dbody"><div class="dprice">${rub(c.pr)}${pmHtml(c)}</div>${src?`<div class="src">${src}</div>`:''}
+    <div class="dbody"><div class="dprice">${rub(c.pr)}</div>
+    ${marketHtml(c)}
     <div class="dttl">${esc(c.t)}</div>
     <div class="facts">${facts.map(f=>`<span>${esc(f)}</span>`).join('')}</div>
     <div class="src">Опубликовано: ${ago(tOf(c))}</div>
