@@ -73,6 +73,39 @@ nav button.on{color:var(--btn);font-weight:600}
 .sw input{width:20px;height:20px}
 .more{padding:14px;text-align:center;color:var(--link)}
 @media (prefers-reduced-motion:no-preference){.sheet>div{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
+
+.row.sm{padding:4px 12px}
+.chip small{opacity:.6;margin-left:4px;font-size:12px}
+.fbtn{flex:none;position:relative;padding:0 12px;border-radius:10px;background:var(--bg2);font-size:18px}
+.fbtn i{position:absolute;right:6px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--btn)}
+.pm{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:6px;font-size:12px;font-weight:600;vertical-align:2px;background:color-mix(in srgb,var(--fg) 10%,transparent);color:var(--hint)}
+.pm.l2{background:color-mix(in srgb,#1a9c5a 18%,transparent);color:#17874d}
+.pm.l1{background:color-mix(in srgb,#1a9c5a 12%,transparent);color:#1a9c5a}
+.pm.lm{background:color-mix(in srgb,#d93636 14%,transparent);color:#d93636}
+.detail{position:fixed;inset:0;z-index:30;background:var(--bg);overflow:auto;display:none;padding-bottom:calc(92px + var(--safe))}
+.detail.open{display:block}
+.gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;background:#000;scrollbar-width:none;aspect-ratio:4/3}
+.gal::-webkit-scrollbar{display:none}
+.gal img{flex:none;width:100%;height:100%;object-fit:contain;scroll-snap-align:center}
+.gal .noimg{flex:none;width:100%;display:grid;place-items:center;color:#999}
+.galwrap{position:relative}
+.cnt{position:absolute;right:10px;bottom:10px;padding:2px 9px;border-radius:99px;background:rgba(0,0,0,.55);color:#fff;font-size:12px}
+.dclose{position:fixed;left:10px;top:10px;z-index:31;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font-size:20px;line-height:36px;text-align:center}
+.dbody{padding:14px}
+.dprice{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.dttl{margin:4px 0 8px;font-size:17px}
+.facts{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.facts span{padding:4px 10px;border-radius:8px;background:var(--bg2);font-size:13px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:12px 0;font-size:14px}
+.kv dt{color:var(--hint)}.kv dd{margin:0}
+.desc{white-space:pre-wrap;margin:12px 0;font-size:15px;line-height:1.45}
+.note{margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--bg2);color:var(--hint);font-size:13px}
+.dbar{position:fixed;left:0;right:0;bottom:0;z-index:31;display:flex;gap:8px;padding:10px 14px calc(10px + var(--safe));background:var(--bg);border-top:1px solid var(--line)}
+.dbar .btn{flex:1}.dbar .star{flex:none;width:50px;border-radius:12px;background:var(--bg2);font-size:22px}
+.dbar .star.on{color:#e0a100}
+.car .price,.car .ttl{padding-right:30px}
+.src{font-size:12px;color:var(--hint);margin-top:2px}
+.sec{margin:14px 0 6px;font-weight:600}
 </style>
 </head>
 <body>
@@ -82,107 +115,173 @@ nav button.on{color:var(--btn);font-weight:600}
   <button data-tab="watches"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Поиски</button>
   <button data-tab="favs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Избранное</button>
 </nav>
+<div class="detail" id="detail"></div>
 <div class="sheet" id="sheet"><div id="sheetBody"></div></div>
 <script>
 const tg=window.Telegram&&Telegram.WebApp; if(tg){tg.ready();tg.expand();}
 const $=s=>document.querySelector(s), app=$('#app');
-const PN={avito:'Авито',drom:'Дром',autoru:'Авто.ру'};
-let CAT=null, ST=EMPTY0();
-function EMPTY0(){return {watches:[],scans:[],items:[],max_watches:6,updated:0}}
-let tab='feed';
-const F={watch:'',platform:'',sort:'new',q:'',below:false}; let shown=30;
-
+const PN={avito:'Авито',drom:'Дром',autoru:'Авто.ру'}, PNP={avito:'Авито',drom:'Дроме',autoru:'Авто.ру'};
 const P=new URLSearchParams(location.search);
-const KEY=P.get('k'), REPO=P.get('r'), BR=P.get('b')||'main';
-const BASE=P.get('base')||`https://raw.githubusercontent.com/${REPO}/${BR}/data/`;
-let FAVS=new Set(); try{FAVS=new Set(JSON.parse(localStorage.getItem('favs')||'[]'))}catch(e){}
-const saveFavs=()=>{try{localStorage.setItem('favs',JSON.stringify([...FAVS]))}catch(e){}};
-const EMPTY={watches:[],scans:[],items:[],max_watches:6,updated:0};
-async function load(){
-  const r=await fetch(BASE+KEY+'.json?t='+Math.floor(Date.now()/60000));
-  if(r.status===404) ST=EMPTY; else if(!r.ok) throw new Error('данные не загрузились ('+r.status+')'); else ST=await r.json();
+const KEY=P.get('k'), REPO=P.get('r'), BR=P.get('b')||'data';
+const ROOT=P.get('base')||`https://raw.githubusercontent.com/${REPO}/${BR}/`;
+let CAT=null, META={brands:{},updated:0}, USER={watches:[],scans:[],max_watches:6}, SH={};
+let tab='feed', shown=30, cur=null;
+const F={brand:'',model:'',gen:'',platform:'',sort:'new',q:'',below:false,y1:'',y2:'',pmin:'',pmax:'',kmax:'',city:''};
+let FAVS={}; try{FAVS=JSON.parse(localStorage.getItem('favs2')||'{}')}catch(e){}
+const saveFavs=()=>{try{localStorage.setItem('favs2',JSON.stringify(FAVS))}catch(e){}};
+
+async function getJSON(path){
+  const r=await fetch(ROOT+path+'?t='+Math.floor(Date.now()/60000));
+  if(r.status===404)return null; if(!r.ok)throw new Error('данные не загрузились ('+r.status+')'); return r.json();
 }
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const rub=n=>Number(n).toLocaleString('ru-RU').replace(/ /g,' ')+' ₽';
+const rub=n=>Number(n).toLocaleString('ru-RU').replace(/\u00a0/g,' ')+' ₽';
 const brand=id=>CAT.brands.find(b=>b.id===id), model=(b,m)=>brand(b)?.models.find(x=>x.id===m);
 const wName=w=>{const b=brand(w.brand),m=model(w.brand,w.model);return (b?.name||w.brand)+' '+(m?.name||w.model)};
+const tOf=c=>c.pub||c.fs;
 function ago(t){const s=Date.now()/1000-t; if(s<90)return 'только что'; if(s<3600)return Math.round(s/60)+' мин назад'; if(s<86400)return Math.round(s/3600)+' ч назад';
-  return new Date(t*1000).toLocaleDateString('ru-RU',{day:'numeric',month:'short'});}
-
-function card(c){
-  const t=c.published||c.first_seen, fresh=Date.now()/1000-c.first_seen<3600*3;
-  const bits=[c.year||'', c.km?c.km.toLocaleString('ru-RU')+' км':'', c.city].filter(Boolean).join(', ');
-  return `<a class="car" data-p="${c.platform}" href="${esc(c.url)}" data-url="${esc(c.url)}">
-    ${fresh?'<i class="new" title="Новое"></i>':''}
-    <div class="ph" style="background-image:url('${esc(c.image)}')"></div>
-    <div><div class="price">${rub(c.price)}${c.below>=12?`<span class="tag">−${c.below}%</span>`:''}</div>
-    <div class="ttl">${esc(c.title)}</div>
-    <div class="sub">${esc(bits)}</div>
-    <div class="sub"><b>${PN[c.platform]}</b> · ${ago(t)}</div></div>
-    <button class="fav ${FAVS.has(c.ext_id)?'on':''}" data-fav="${esc(c.ext_id)}" aria-label="В избранное">${FAVS.has(c.ext_id)?'★':'☆'}</button></a>`;
+  return new Date(t*1000).toLocaleDateString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});}
+function pmHtml(c){
+  if(!c.pm)return ''; const cl=c.pl>=2?'l2':c.pl===1?'l1':c.pl<0?'lm':'';
+  return `<span class="pm ${cl}">${esc(c.pm)}</span>`;
 }
 
+/* ---------- данные ---------- */
+async function loadShard(){ const key=F.brand||'latest'; const d=await getJSON('pub/'+(F.brand?'b_'+F.brand:'latest')+'.json'); SH[key]=d?d.items:[]; SH.updated=d?d.updated:0; }
+async function loadAll(){
+  const [u,m]=await Promise.all([getJSON('data/'+KEY+'.json'),getJSON('pub/meta.json')]);
+  USER=u||{watches:[],scans:[],max_watches:6}; META=m||{brands:{},updated:0}; await loadShard();
+}
 function filtered(){
-  const t=c=>c.published||c.first_seen;
-  const S={new:(a,b)=>t(b)-t(a),cheap:(a,b)=>a.price-b.price,exp:(a,b)=>b.price-a.price,year:(a,b)=>(b.year||0)-(a.year||0),km:(a,b)=>(a.km||1e9)-(b.km||1e9)};
-  const q=F.q.toLowerCase();
-  return (ST.items||[]).filter(c=>{
-    if(tab==='favs'&&!FAVS.has(c.ext_id))return false;
-    if(F.watch&&!(c.w||[]).includes(+F.watch))return false;
-    if(F.platform&&c.platform!==F.platform)return false;
-    if(q&&!c.title.toLowerCase().includes(q))return false;
-    if(F.below&&!(c.below>=12))return false;
+  const items=SH[F.brand||'latest']||[], q=F.q.toLowerCase(), city=F.city.toLowerCase();
+  const y1=+F.y1||0,y2=+F.y2||0,p1=+F.pmin||0,p2=+F.pmax||0,k2=+F.kmax||0;
+  const S={new:(a,b)=>tOf(b)-tOf(a),cheap:(a,b)=>a.pr-b.pr,exp:(a,b)=>b.pr-a.pr,year:(a,b)=>(b.y||0)-(a.y||0),km:(a,b)=>(a.km||1e9)-(b.km||1e9)};
+  return items.filter(c=>{
+    if(F.model&&c.m!==(F.model==='_'?'':F.model))return false;
+    if(F.gen&&c.g!==F.gen)return false;
+    if(F.platform&&c.p!==F.platform)return false;
+    if(q&&!c.t.toLowerCase().includes(q))return false;
+    if(F.below&&!(c.pl>=1))return false;
+    if((y1||y2)&&!c.y)return false; if(y1&&c.y<y1)return false; if(y2&&c.y>y2)return false;
+    if(p1&&c.pr<p1)return false; if(p2&&c.pr>p2)return false;
+    if(k2&&(!c.km||c.km>k2))return false;
+    if(city&&!(c.c||'').toLowerCase().includes(city))return false;
     return true;}).sort(S[F.sort]||S.new);
 }
-function loadFeed(reset){ if(reset)shown=30; else shown+=30; renderList(); }
+const nFilters=()=>['platform','below','y1','y2','pmin','pmax','kmax','city'].filter(k=>F[k]).length+(F.sort!=='new'?1:0);
+
+/* ---------- карточка в списке ---------- */
+function card(c,fav){
+  const bits=[c.y||'',c.km?c.km.toLocaleString('ru-RU')+' км':'',c.c].filter(Boolean).join(', ');
+  const fresh=Date.now()/1000-c.fs<3600*3;
+  return `<div class="car" data-p="${c.p}" data-open="${esc(c.id)}" role="button" tabindex="0">
+    ${fresh?'<i class="new" title="Новое"></i>':''}
+    <div class="ph" style="background-image:url('${esc(c.i)}')"></div>
+    <div><div class="price">${rub(c.pr)}${pmHtml(c)}</div>
+    <div class="ttl">${esc(c.t)}</div><div class="sub">${esc(bits)}</div>
+    <div class="sub"><b>${PN[c.p]}</b> · ${ago(tOf(c))}</div></div>
+    <button class="fav ${FAVS[c.id]?'on':''}" data-fav="${esc(c.id)}" aria-label="В избранное">${FAVS[c.id]?'★':'☆'}</button></div>`;
+}
+function findItem(id){ for(const k in SH){ if(Array.isArray(SH[k])){const f=SH[k].find(x=>x.id===id); if(f)return f;} } return FAVS[id]||null; }
+
+/* ---------- лента ---------- */
+function renderFeed(){
+  const brands=CAT.brands.filter(b=>META.brands[b.id]>0).sort((a,b)=>META.brands[b.id]-META.brands[a.id]);
+  const items=SH[F.brand||'latest']||[];
+  let models='',gens='';
+  if(F.brand){
+    const cnt={}; items.forEach(c=>cnt[c.m]=(cnt[c.m]||0)+1);
+    const b=brand(F.brand);
+    models=`<div class="row sm"><button class="chip ${F.model?'':'on'}" data-mod="">Все модели</button>`+
+      b.models.filter(m=>cnt[m.id]).sort((x,y)=>cnt[y.id]-cnt[x.id]).map(m=>`<button class="chip ${F.model===m.id?'on':''}" data-mod="${m.id}">${esc(m.name)}<small>${cnt[m.id]}</small></button>`).join('')+
+      (cnt['']?`<button class="chip ${F.model==='_'?'on':''}" data-mod="_">Другие<small>${cnt['']}</small></button>`:'')+`</div>`;
+    const m=model(F.brand,F.model);
+    if(m&&m.gens.length){const gc={}; items.filter(c=>c.m===m.id).forEach(c=>gc[c.g]=(gc[c.g]||0)+1);
+      gens=`<div class="row sm"><button class="chip ${F.gen?'':'on'}" data-gen="">Все поколения</button>`+m.gens.filter(g=>gc[g.id]).map(g=>`<button class="chip ${F.gen===g.id?'on':''}" data-gen="${g.id}">${esc(g.name)}<small>${g.y1}–${g.y2}</small></button>`).join('')+`</div>`;}
+  }
+  app.innerHTML=`<div class="top">
+    <div class="search"><input id="q" type="search" placeholder="Поиск по названию" value="${esc(F.q)}"><button class="fbtn" data-filters aria-label="Фильтры">⚙${nFilters()?'<i></i>':''}</button></div>
+    <div class="row"><button class="chip ${F.brand?'':'on'}" data-br="">Все марки</button>${brands.map(b=>`<button class="chip ${F.brand===b.id?'on':''}" data-br="${b.id}">${esc(b.name)}<small>${META.brands[b.id]}</small></button>`).join('')}</div>
+    ${models}${gens}</div><div class="meta" id="meta"></div><div id="list"></div>`;
+  renderList();
+}
 function renderList(){
   const el=$('#list'); if(!el)return;
-  const all=filtered(), items=all.slice(0,shown), total=all.length;
+  let all,favMode=tab==='favs';
+  if(favMode) all=Object.values(FAVS).sort((a,b)=>(b._t||0)-(a._t||0)); else all=filtered();
+  const items=all.slice(0,shown), total=all.length;
   if(!items.length){
-    el.innerHTML = tab==='favs'
-      ? `<div class="empty"><b>В избранном пусто</b>Нажмите ☆ на объявлении в ленте.</div>`
-      : ST.watches.length
-        ? `<div class="empty"><b>Пока нет объявлений</b>Первый круг поиска занимает несколько минут. Статус смотрите на вкладке «Поиски».</div>`
-        : `<div class="empty"><b>Нет ни одного поиска</b>Выберите марку и модель — объявления со всех площадок появятся здесь.<br><br><button class="btn sm" data-go="newwatch">Создать поиск</button></div>`;
-    $('#meta').textContent=''; return;
+    el.innerHTML=favMode?`<div class="empty"><b>В избранном пусто</b>Откройте объявление и нажмите ☆.</div>`:
+      Object.keys(META.brands).length?`<div class="empty"><b>Ничего не найдено</b>Измените марку или фильтры.</div>`:
+      `<div class="empty"><b>Лента наполняется</b>Бот собирает объявления с площадок. Первые появятся через несколько минут, обновите приложение позже.</div>`;
+    const m=$('#meta'); if(m)m.textContent=''; return;
   }
-  $('#meta').textContent=`Найдено ${total}`+(ST.updated?` · обновлено ${ago(ST.updated)}`:'');
-  el.innerHTML=items.map(card).join('')+(items.length<total?'<button class="more" data-more>Показать ещё</button>':'');
+  const m=$('#meta'); if(m)m.textContent=favMode?`В избранном ${total}`:`Найдено ${total}`+(SH.updated?` · обновлено ${ago(SH.updated)}`:'');
+  el.innerHTML=items.map(c=>card(c)).join('')+(items.length<total?'<button class="more" data-more>Показать ещё</button>':'');
 }
-function renderFeed(){
-  const w=ST.watches;
-  app.innerHTML=`<div class="top">
-    ${tab==='feed'?`<div class="row" id="wchips"><button class="chip ${F.watch?'':'on'}" data-w="">Все поиски</button>${w.map(x=>`<button class="chip ${F.watch==x.id?'on':''}" data-w="${x.id}">${esc(wName(x))}</button>`).join('')}</div>`:''}
-    <div class="search"><input id="q" type="search" placeholder="Поиск по названию" value="${esc(F.q)}">
-      <select id="sort"><option value="new">Сначала новые</option><option value="cheap">Дешевле</option><option value="exp">Дороже</option><option value="year">Новее год</option><option value="km">Меньше пробег</option></select></div>
-    <div class="row"><button class="chip ${F.platform?'':'on'}" data-pl="">Все площадки</button>${Object.entries(PN).map(([k,v])=>`<button class="chip ${F.platform===k?'on':''}" data-pl="${k}">${v}</button>`).join('')}<button class="chip ${F.below?'on':''}" data-below>Ниже рынка</button></div></div>
-    <div class="meta" id="meta"></div><div id="list"></div>`;
-  $('#sort').value=F.sort;
+function renderFavs(){ app.innerHTML=`<div class="meta" id="meta"></div><div id="list"></div>`; renderList(); }
+
+/* ---------- подробная карточка ---------- */
+function openDetail(id){
+  const c=findItem(id); if(!c)return; cur=c;
+  const d=c.d||{}, imgs=(d.imgs&&d.imgs.length?d.imgs:(c.i?[c.i]:[]));
+  const facts=[c.y?c.y+' г.':'',c.km?c.km.toLocaleString('ru-RU')+' км':'',c.c,PN[c.p]].filter(Boolean);
+  const params=Object.entries(d.params||{}).filter(([k,v])=>v&&v!=='None');
+  const src=c.pm?(c.ps==='platform'?`Оценка ${PN[c.p]}`:'Оценка по нашим данным'):'';
+  $('#detail').innerHTML=`<button class="dclose" data-dclose aria-label="Назад">←</button>
+    <div class="galwrap"><div class="gal" id="gal">${imgs.length?imgs.map(u=>`<img src="${esc(u)}" loading="lazy" alt="">`).join(''):'<div class="noimg">нет фото</div>'}</div>${imgs.length>1?`<span class="cnt" id="cnt">1/${imgs.length}</span>`:''}</div>
+    <div class="dbody"><div class="dprice">${rub(c.pr)}${pmHtml(c)}</div>${src?`<div class="src">${src}</div>`:''}
+    <div class="dttl">${esc(c.t)}</div>
+    <div class="facts">${facts.map(f=>`<span>${esc(f)}</span>`).join('')}</div>
+    <div class="src">Опубликовано: ${ago(tOf(c))}</div>
+    ${params.length?`<div class="sec">Характеристики</div><dl class="kv">${params.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`:''}
+    ${d.desc?`<div class="sec">Описание</div><div class="desc">${esc(d.desc)}</div>`:''}
+    ${d.short?`<div class="note">Показано краткое описание из списка. Полные фото и описание бот подгружает в фоне, они появятся позже. Всё сразу — на площадке по кнопке ниже.</div>`:''}
+    ${d.seller?`<div class="src">Продавец: ${esc(d.seller)}</div>`:''}</div>
+    <div class="dbar"><button class="star ${FAVS[c.id]?'on':''}" data-dfav aria-label="В избранное">${FAVS[c.id]?'★':'☆'}</button>
+    <button class="btn" data-ext>Открыть на ${PNP[c.p]}</button></div>`;
+  $('#detail').classList.add('open'); $('#detail').scrollTop=0;
+  const g=$('#gal'); if(g&&imgs.length>1)g.addEventListener('scroll',()=>{const i=Math.round(g.scrollLeft/g.clientWidth);$('#cnt').textContent=(i+1)+'/'+imgs.length;});
+  if(tg&&tg.BackButton){tg.BackButton.show();tg.BackButton.onClick(closeDetail);}
 }
+function closeDetail(){ $('#detail').classList.remove('open'); cur=null; if(tg&&tg.BackButton){tg.BackButton.hide();tg.BackButton.offClick(closeDetail);} }
+function toggleFav(c){ if(FAVS[c.id])delete FAVS[c.id]; else FAVS[c.id]={...c,_t:Date.now()}; saveFavs(); }
+
+/* ---------- мои поиски ---------- */
 function renderWatches(){
-  const sc={}; (ST.scans||[]).forEach(s=>(sc[s.watch_id]=sc[s.watch_id]||[]).push(s));
-  app.innerHTML=`<div class="pad"><button class="btn" data-go="newwatch">Новый поиск</button>
-    <div class="sub" style="margin-top:8px">Пауза, уведомления и удаление — кнопка «🔎 Мои поиски» в чате с ботом.</div></div>`+
-  (ST.watches.length?ST.watches.map(w=>{
+  const sc={}; (USER.scans||[]).forEach(s=>(sc[s.watch_id]=sc[s.watch_id]||[]).push(s));
+  app.innerHTML=`<div class="pad"><button class="btn" data-go="newwatch">Новый поиск для уведомлений</button>
+    <div class="sub" style="margin-top:8px">Поиск нужен только для уведомлений о новых объявлениях. Листать все объявления можно во вкладке «Лента». Пауза и удаление — «🔎 Мои поиски» в чате.</div></div>`+
+  ((USER.watches||[]).length?USER.watches.map(w=>{
     const lines=(sc[w.id]||[]).map(s=>{const rn=(CAT.regions.find(r=>r.id===s.region)||{}).name;return `<i class="${s.last_error?'err':''}">${PN[s.platform]}${rn?' · '+rn:''}: ${s.last_error?esc(s.last_error):(s.last_ok?'ок, '+ago(s.last_ok)+', подошло '+s.n:'ждём')}</i>`}).join('<br>')||'<i>Ещё не проверялся</i>';
     const gens=w.gens.map(g=>model(w.brand,w.model)?.gens.find(x=>x.id===g)?.name).filter(Boolean).join(', ');
     const rg=w.regions.map(r=>CAT.regions.find(x=>x.id===r)?.name||r).join(', ');
     const det=[gens,(w.y1||w.y2)?`${w.y1||''}–${w.y2||''}`:'',w.pmax?`до ${rub(w.pmax)}`:'',rg,w.platforms.map(p=>PN[p]).join(', ')].filter(Boolean).join(' · ');
     return `<div class="w"><h3>${esc(wName(w))}${w.active?'':' (пауза)'}${w.notify?'':' · без уведомлений'}</h3><div class="st">${esc(det)}<br>${lines}</div>
-      <div class="acts"><button class="chip" data-open="${w.id}">Смотреть ленту</button></div></div>`}).join(''):
-  `<div class="empty"><b>Поисков пока нет</b>Поиск = марка + модель + регионы. Можно создать несколько.</div>`);
+      <div class="acts"><button class="chip" data-wopen="${w.id}">Смотреть в ленте</button></div></div>`}).join(''):
+  `<div class="empty"><b>Поисков для уведомлений нет</b>Создайте поиск, и бот будет присылать новые объявления в чат.</div>`);
 }
-function render(){
-  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
-  if(tab==='watches')renderWatches(); else {renderFeed(); loadFeed(true);}
-}
-function toast(m){ if(tg&&tg.showAlert)tg.showAlert(m); else alert(m); }
 
-/* ---------- мастер нового поиска ---------- */
+/* ---------- шторка: фильтры и новый поиск ---------- */
+let sheetMode='';
 const N={brand:'',models:new Set(),gens:new Set(),regions:new Set(['rossiya']),platforms:new Set(['avito','drom','autoru']),y1:'',y2:'',pmax:'',notify:true,bq:'',rq:''};
-function openSheet(){ $('#sheet').classList.add('open'); drawSheet(); }
+function openSheet(m){ sheetMode=m; $('#sheet').classList.add('open'); drawSheet(); }
 function closeSheet(){ $('#sheet').classList.remove('open'); }
-function drawSheet(){
+function drawSheet(){ sheetMode==='filters'?drawFilters():drawWizard(); }
+function drawFilters(){
+  $('#sheetBody').innerHTML=`<h2>Фильтры</h2>
+  <div class="f">Площадка</div><div class="chips"><button class="chip ${F.platform?'':'on'}" data-fpl="">Все</button>${Object.entries(PN).map(([k,v])=>`<button class="chip ${F.platform===k?'on':''}" data-fpl="${k}">${v}</button>`).join('')}</div>
+  <div class="f">Сортировка</div><div class="chips">${[['new','Сначала новые'],['cheap','Дешевле'],['exp','Дороже'],['year','Новее год'],['km','Меньше пробег']].map(([k,v])=>`<button class="chip ${F.sort===k?'on':''}" data-fsort="${k}">${v}</button>`).join('')}</div>
+  <div class="f">Год выпуска</div><div class="two"><input type="text" inputmode="numeric" id="fy1" placeholder="от" value="${esc(F.y1)}"><input type="text" inputmode="numeric" id="fy2" placeholder="до" value="${esc(F.y2)}"></div>
+  <div class="f">Цена, ₽</div><div class="two"><input type="text" inputmode="numeric" id="fp1" placeholder="от" value="${esc(F.pmin)}"><input type="text" inputmode="numeric" id="fp2" placeholder="до" value="${esc(F.pmax)}"></div>
+  <div class="f">Пробег до, км</div><input type="text" inputmode="numeric" id="fk" placeholder="например 150000" value="${esc(F.kmax)}">
+  <div class="f">Город (если площадка его указывает)</div><input type="text" id="fc" placeholder="например Москва" value="${esc(F.city)}">
+  <label class="sw"><span>Только с хорошей ценой (по оценке площадки)</span><input type="checkbox" id="fb" ${F.below?'checked':''}></label>
+  <button class="btn" id="fapply">Показать</button><div style="height:8px"></div><button class="btn ghost" id="freset">Сбросить</button>`;
+}
+function readFilters(){ const v=id=>($('#'+id)?.value||'').trim(); const n=id=>v(id).replace(/\D/g,'');
+  F.y1=n('fy1');F.y2=n('fy2');F.pmin=n('fp1');F.pmax=n('fp2');F.kmax=n('fk');F.city=v('fc');F.below=!!$('#fb')?.checked; }
+function drawWizard(){
   const b=brand(N.brand);
   const brands=CAT.brands.filter(x=>!N.bq||x.name.toLowerCase().includes(N.bq.toLowerCase()));
   const gens=[]; if(b) b.models.filter(m=>N.models.has(m.id)).forEach(m=>m.gens.forEach(g=>gens.push([m,g])));
@@ -205,20 +304,35 @@ function drawSheet(){
 function tog(set,v){set.has(v)?set.delete(v):set.add(v);}
 function keepScroll(fn){const s=$('#sheet>div').scrollTop;fn();$('#sheet>div').scrollTop=s;}
 function syncInputs(){['y1','y2','pmax'].forEach(k=>{const e=$('#'+k);if(e)N[k]=e.value.replace(/\D/g,'');});const n=$('#nt');if(n)N.notify=n.checked;}
+function toast(m){ if(tg&&tg.showAlert)tg.showAlert(m); else alert(m); }
+
+/* ---------- маршрутизация ---------- */
+function render(){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  if(tab==='watches')renderWatches(); else if(tab==='favs')renderFavs(); else renderFeed();
+}
+async function pickBrand(id){ F.brand=id; F.model=''; F.gen=''; shown=30; if(!SH[id||'latest'])await loadShard(); else loadShard().then(()=>{if(tab==='feed')renderList()}).catch(()=>{}); renderFeed(); }
 
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-tab],[data-fav],[data-w],[data-pl],[data-below],[data-more],[data-go],[data-notify],[data-active],[data-open],[data-del],[data-b],[data-m],[data-g],[data-r],[data-pf],#create,#cancel,a.car');
+  const t=e.target.closest('[data-tab],[data-fav],[data-open],[data-br],[data-mod],[data-gen],[data-more],[data-filters],[data-go],[data-wopen],[data-dclose],[data-dfav],[data-ext],[data-fpl],[data-fsort],[data-b],[data-m],[data-g],[data-r],[data-pf],#create,#cancel,#fapply,#freset');
   if(!t)return; const d=t.dataset;
-  if(d.tab){tab=d.tab; render(); return;}
-  if(d.fav!==undefined){e.preventDefault(); const on=!FAVS.has(d.fav); on?FAVS.add(d.fav):FAVS.delete(d.fav); saveFavs();
-    if(tab==='favs')renderList(); else {t.classList.toggle('on',on); t.textContent=on?'★':'☆';} return;}
-  if(t.matches('a.car')){e.preventDefault(); const u=d.url; if(tg&&tg.openLink)tg.openLink(u); else window.open(u,'_blank'); return;}
-  if(d.w!==undefined){F.watch=d.w; render(); return;}
-  if(d.pl!==undefined){F.platform=d.pl; render(); return;}
-  if(d.below!==undefined){F.below=!F.below; render(); return;}
-  if(d.more!==undefined){loadFeed(false); return;}
-  if(d.go==='newwatch'){Object.assign(N,{brand:'',models:new Set(),gens:new Set(),bq:'',rq:''}); openSheet(); return;}
-  if(d.open){F.watch=d.open; tab='feed'; render(); return;}
+  if(d.tab){ if(cur)closeDetail(); tab=d.tab; render(); return; }
+  if(d.fav!==undefined){ e.stopPropagation(); const c=findItem(d.fav); if(c){toggleFav(c); if(tab==='favs')renderList(); else {const on=!!FAVS[d.fav]; t.classList.toggle('on',on); t.textContent=on?'★':'☆';}} return; }
+  if(d.open){ openDetail(d.open); return; }
+  if(d.dclose!==undefined){ closeDetail(); return; }
+  if(d.dfav!==undefined){ toggleFav(cur); t.classList.toggle('on',!!FAVS[cur.id]); t.textContent=FAVS[cur.id]?'★':'☆'; if(tab==='favs')renderList(); return; }
+  if(d.ext!==undefined){ if(tg&&tg.openLink)tg.openLink(cur.u); else window.open(cur.u,'_blank'); return; }
+  if(d.br!==undefined){ await pickBrand(d.br); return; }
+  if(d.mod!==undefined){ F.model=d.mod; F.gen=''; shown=30; renderFeed(); return; }
+  if(d.gen!==undefined){ F.gen=d.gen; shown=30; renderFeed(); return; }
+  if(d.more!==undefined){ shown+=30; renderList(); return; }
+  if(d.filters!==undefined){ openSheet('filters'); return; }
+  if(d.fpl!==undefined){ readFilters(); F.platform=d.fpl; drawFilters(); return; }
+  if(d.fsort){ readFilters(); F.sort=d.fsort; drawFilters(); return; }
+  if(t.id==='fapply'){ readFilters(); closeSheet(); shown=30; renderFeed(); return; }
+  if(t.id==='freset'){ Object.assign(F,{platform:'',sort:'new',below:false,y1:'',y2:'',pmin:'',pmax:'',kmax:'',city:''}); closeSheet(); shown=30; renderFeed(); return; }
+  if(d.go==='newwatch'){ Object.assign(N,{brand:'',models:new Set(),gens:new Set(),bq:'',rq:''}); openSheet('wizard'); return; }
+  if(d.wopen){ const w=USER.watches.find(x=>x.id==d.wopen); if(w){ Object.assign(F,{brand:w.brand,model:w.model,gen:w.gens.length===1?w.gens[0]:'',y1:w.y1||'',y2:w.y2||'',pmax:w.pmax||''}); tab='feed'; shown=30; await loadShard(); render(); } return; }
   if(d.b){syncInputs(); N.brand=d.b; N.models=new Set(); N.gens=new Set(); keepScroll(drawSheet); return;}
   if(d.m){syncInputs(); tog(N.models,d.m); N.gens=new Set(); keepScroll(drawSheet); return;}
   if(d.g){syncInputs(); tog(N.gens,d.g); keepScroll(drawSheet); return;}
@@ -236,17 +350,17 @@ document.addEventListener('click',async e=>{
   }
 });
 document.addEventListener('input',e=>{
-  if(e.target.id==='q'){F.q=e.target.value; clearTimeout(window._qt); window._qt=setTimeout(()=>loadFeed(true),350);}
+  if(e.target.id==='q'){F.q=e.target.value; clearTimeout(window._qt); window._qt=setTimeout(()=>{shown=30;renderList();},300);}
   if(e.target.id==='bq'||e.target.id==='rq'){syncInputs(); N[e.target.id]=e.target.value; const id=e.target.id,pos=e.target.selectionStart; keepScroll(drawSheet); const n=$('#'+id); n.focus(); n.setSelectionRange(pos,pos);}
 });
-document.addEventListener('change',e=>{ if(e.target.id==='sort'){F.sort=e.target.value; loadFeed(true);} });
+document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('.car')){e.preventDefault();openDetail(e.target.dataset.open);} });
 $('#sheet').addEventListener('click',e=>{ if(e.target.id==='sheet')closeSheet(); });
 
 (async()=>{
-  if(!KEY||!REPO&&!P.get('base')){ app.innerHTML=`<div class="empty"><b>Нет доступа</b>Откройте приложение кнопкой «🚗 Авто-лента» в чате с ботом.</div>`; return; }
+  if(!KEY||(!REPO&&!P.get('base'))){ app.innerHTML=`<div class="empty"><b>Нет доступа</b>Откройте приложение кнопкой «🚗 Авто-лента» в чате с ботом.</div>`; return; }
   try{
-    CAT=await (await fetch('catalog.json')).json(); await load(); render();
-    setInterval(async()=>{ if($('#sheet').classList.contains('open'))return; try{ const n=(ST.items||[]).length; await load(); if(tab==='watches')renderWatches(); else if(!document.activeElement||document.activeElement.id!=='q'){ renderList(); } }catch(e){} },60000);
+    CAT=await (await fetch('catalog.json')).json(); await loadAll(); render();
+    setInterval(async()=>{ if($('#sheet').classList.contains('open')||cur)return; try{ await loadAll(); if(tab==='watches')renderWatches(); else if(tab==='feed'&&document.activeElement.id!=='q')renderFeed(); }catch(e){} },90000);
   }catch(e){ app.innerHTML=`<div class="empty"><b>Не удалось загрузить данные</b>${esc(e.message)}<br><br><button class="btn sm" onclick="location.reload()">Повторить</button></div>`; }
 })();
 </script>
